@@ -1,0 +1,47 @@
+name: lafia_sna
+description: "Lafia Sna — Hôpital Virtuel (application mobile patient)."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Calendrier et textes système en français (fourni avec Flutter)
+  flutter_localizations:
+    sdk: flutter
+  # Client HTTP officiel de l'équipe Dart (dart.dev)
+  http: ^1.2.2
+  # Appel (tel:) et itinéraire : paquet officiel de l'équipe Flutter
+  url_launcher: ^6.3.1
+  # Jeton de connexion gardé chiffré sur le téléphone (Keystore Android)
+  flutter_secure_storage: ^9.2.2
+  # Position « près de moi » (éditeur vérifié baseflow.com)
+  geolocator: ^14.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    # Logo officiel, identique à celui du site web (Lafia-Sna-frontend/public/icon-512.png)
+    - assets/images/logo.png
+  # Police de la maquette Figma, intégrée à l'appli (rien à télécharger). Licence : assets/fonts/OFL.txt
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Figtree-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Figtree-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Figtree-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Figtree-ExtraBold.ttf
+          weight: 800
