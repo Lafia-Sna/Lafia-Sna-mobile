@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../api/patient_api.dart';
+import '../auth/auth_controller.dart';
+import '../format.dart';
 import '../theme.dart';
 import '../widgets/service_icon.dart';
 import '../widgets/states.dart';
@@ -54,13 +56,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
     }
   }
 
-  Future<void> _open(ConversationSummary conversation) async {
+  Future<void> _open(ConversationSummary conversation, _Counterpart counterpart) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ChatScreen(
-          serviceId: conversation.serviceId,
-          serviceName: conversation.serviceName,
-          hospitalName: conversation.hospitalName,
+        builder: (_) => ChatScreen.existing(
+          conversationId: conversation.id,
+          title: counterpart.title,
+          subtitle: counterpart.subtitle,
+          phone: counterpart.phone,
         ),
       ),
     );
@@ -71,6 +74,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
   @override
   Widget build(BuildContext context) {
     final conversations = _conversations;
+    // Comme sur le site : un patient voit ses interlocuteurs ; un infirmier ou un agent d'hôpital voit ses patients.
+    final role = AuthScope.of(context).user?.role;
 
     return Scaffold(
       appBar: AppBar(
@@ -102,7 +107,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           children: [
                             for (var i = 0; i < conversations.length; i++) ...[
                               if (i > 0) const Divider(height: 1, color: LafiaColors.greyTint),
-                              _ConversationRow(conversation: conversations[i], onTap: () => _open(conversations[i])),
+                              _ConversationRow(
+                                conversation: conversations[i],
+                                counterpart: _Counterpart.of(conversations[i], viewerRole: role),
+                                onTap: () => _open(
+                                  conversations[i],
+                                  _Counterpart.of(conversations[i], viewerRole: role),
+                                ),
+                              ),
                             ],
                           ],
                         ),
@@ -116,9 +128,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
 }
 
 class _ConversationRow extends StatelessWidget {
-  const _ConversationRow({required this.conversation, required this.onTap});
+  const _ConversationRow({required this.conversation, required this.counterpart, required this.onTap});
 
   final ConversationSummary conversation;
+  final _Counterpart counterpart;
   final VoidCallback onTap;
 
   @override
@@ -133,14 +146,24 @@ class _ConversationRow extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            ServiceIconTile(serviceName: conversation.serviceName),
+            if (conversation.serviceName != null)
+              ServiceIconTile(serviceName: conversation.serviceName!)
+            else
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFFD8F7E4),
+                child: Text(
+                  initials(counterpart.title),
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: LafiaColors.greenInk),
+                ),
+              ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${conversation.serviceName} — ${conversation.hospitalName}',
+                    counterpart.title,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15),
                   ),
@@ -172,4 +195,33 @@ class _ConversationRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Avec qui l'on parle dans une discussion, selon qui regarde.
+class _Counterpart {
+  const _Counterpart({required this.title, required this.subtitle, this.phone});
+
+  factory _Counterpart.of(ConversationSummary conversation, {required String? viewerRole}) {
+    final service = '${conversation.serviceName ?? 'Service'} — ${conversation.hospitalName ?? ''}';
+    if (!conversation.withNurse) {
+      // Agent d'hôpital : le patient qui écrit au service, avec son numéro.
+      if (viewerRole == 'staff' || viewerRole == 'admin') {
+        return _Counterpart(title: conversation.patientName, subtitle: service, phone: conversation.patientPhone);
+      }
+      return _Counterpart(title: service, subtitle: 'Chat de pré-orientation avec l\'accueil du service');
+    }
+    if (viewerRole == 'patient') {
+      return _Counterpart(
+        title: conversation.nurseName ?? 'Infirmier',
+        subtitle: conversation.nurseTitle ?? 'Soins à domicile',
+        phone: conversation.nursePhone,
+      );
+    }
+    // Infirmier : son patient, dont le numéro n'est jamais transmis par la messagerie.
+    return _Counterpart(title: conversation.patientName, subtitle: 'Patient · soins à domicile');
+  }
+
+  final String title;
+  final String subtitle;
+  final String? phone;
 }

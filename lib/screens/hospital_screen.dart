@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 
 import '../api/hospitals_api.dart';
 import '../api/models.dart';
+import '../api/patient_api.dart' show ReviewTarget;
 import '../format.dart';
 import '../theme.dart';
 import '../widgets/call_sheet.dart';
+import '../widgets/emergency_call.dart';
+import '../widgets/reviews_section.dart';
 import '../widgets/service_icon.dart';
 import '../widgets/states.dart';
 import '../widgets/status_pill.dart';
@@ -109,6 +112,10 @@ class _Content extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
         _Hero(detail: detail),
+        if (detail.hospital.emergencyPhone != null) ...[
+          const SizedBox(height: 12),
+          EmergencyCallCard(phone: detail.hospital.emergencyPhone, hospitalName: detail.hospital.name),
+        ],
         const SizedBox(height: 20),
         Text('Services', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 10),
@@ -138,6 +145,8 @@ class _Content extends StatelessWidget {
               ],
             ),
           ),
+        const SizedBox(height: 16),
+        ReviewsSection(target: ReviewTarget.hospitals, id: detail.hospital.id, name: detail.hospital.name),
       ],
     );
   }

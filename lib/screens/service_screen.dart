@@ -9,6 +9,7 @@ import '../format.dart';
 import '../theme.dart';
 import '../widgets/appointment_sheet.dart';
 import '../widgets/call_sheet.dart';
+import '../widgets/emergency_call.dart';
 import '../widgets/service_icon.dart';
 import '../widgets/states.dart';
 import '../widgets/status_pill.dart';
@@ -212,6 +213,11 @@ class _Content extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Comme sur le site : la ligne des urgences de l'hôpital, en premier.
+        if (detail.hospitalEmergencyPhone != null) ...[
+          EmergencyCallCard(phone: detail.hospitalEmergencyPhone, hospitalName: detail.hospitalName),
+          const SizedBox(height: 14),
+        ],
         _Summary(detail: detail, onCall: () => api.recordServiceEvent(detail.id, ServiceEvent.call)),
         const SizedBox(height: 14),
         _WeekHours(detail: detail),
@@ -308,7 +314,7 @@ class _Summary extends StatelessWidget {
               context,
               () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => ChatScreen(
+                  builder: (_) => ChatScreen.service(
                     serviceId: detail.id,
                     serviceName: detail.name,
                     hospitalName: detail.hospitalName,

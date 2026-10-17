@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 import '../api/hospitals_api.dart';
 import '../api/models.dart';
 import '../auth/account_button.dart';
+import '../auth/auth_controller.dart';
 import '../location.dart';
 import '../theme.dart';
 import '../widgets/lafia_logo.dart';
 import '../widgets/place_sheet.dart';
 import '../widgets/states.dart';
+import '../widgets/web_space_notice.dart';
+import '../widgets/stars.dart';
 import '../widgets/status_pill.dart';
 import 'hospital_screen.dart';
 
@@ -152,6 +155,12 @@ class _HospitalListScreenState extends State<HospitalListScreen> {
                   onChoosePlace: _choosePlace,
                 ),
               ),
+              // Agent d'hôpital ou équipe : leur espace de gestion est sur le site web.
+              if (AuthScope.of(context).user case final user? when user.managesOnWeb)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  sliver: SliverToBoxAdapter(child: WebSpaceNotice(role: user.role)),
+                ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
                 sliver: SliverToBoxAdapter(
@@ -428,6 +437,10 @@ class _HospitalCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text('${hospital.city}, région ${hospital.region}', style: const TextStyle(fontSize: 13)),
+                      if (hospital.reviewsCount > 0) ...[
+                        const SizedBox(height: 4),
+                        RatingBadge(average: hospital.ratingAverage, count: hospital.reviewsCount),
+                      ],
                       const SizedBox(height: 10),
                       SegmentedBar(filled: open, total: total),
                       const SizedBox(height: 10),

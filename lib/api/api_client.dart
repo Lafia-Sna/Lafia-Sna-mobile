@@ -76,6 +76,11 @@ class ApiClient {
     return _send(() => _client.patch(_uri(path), headers: _headers(json: true), body: jsonEncode(body)));
   }
 
+  /// DELETE ; renvoie le contenu de la clé `data` (ou `null` pour une réponse 204).
+  Future<dynamic> delete(String path) {
+    return _send(() => _client.delete(_uri(path), headers: _headers()));
+  }
+
   Map<String, String> _headers({bool json = false}) {
     final current = token;
     return {

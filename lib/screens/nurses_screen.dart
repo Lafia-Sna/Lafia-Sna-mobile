@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 import '../api/patient_api.dart';
 import '../auth/account_button.dart';
 import '../auth/auth_controller.dart';
-import '../auth/patient_guard.dart';
-import '../format.dart';
 import '../theme.dart';
-import '../widgets/care_request_sheet.dart';
 import '../widgets/lafia_logo.dart';
 import '../widgets/states.dart';
-import '../widgets/status_pill.dart';
+import '../widgets/stars.dart';
+import 'nurse_detail_screen.dart';
 import 'nurse_space.dart';
 
 /// Maquette M13 : infirmiers à domicile validés par l'équipe, filtrables par région.
@@ -143,6 +141,9 @@ class _NursesScreenState extends State<NursesScreen> {
   }
 }
 
+/// Nombre de soins affichés sur la carte avant « +N », comme sur le site.
+const _visibleServices = 4;
+
 class _NurseCard extends StatelessWidget {
   const _NurseCard({required this.nurse});
 
@@ -150,71 +151,81 @@ class _NurseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final place = [nurse.city, if (nurse.region != null) 'région ${nurse.region}'].join(', ');
+    final hidden = nurse.services.length - _visibleServices;
+    final years = nurse.experienceYears;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: cardDecoration(),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: const Color(0xFFD8F7E4),
-            child: Text(
-              initials(nurse.name),
-              style: const TextStyle(fontWeight: FontWeight.w700, color: LafiaColors.greenInk),
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: cardDecoration(),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => NurseDetailScreen(nurseId: nurse.id, initial: nurse)),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    Text(nurse.name, style: Theme.of(context).textTheme.titleMedium),
-                    // L'annuaire ne montre que les infirmiers disponibles.
-                    const Pill(label: 'Disponible'),
-                  ],
-                ),
-                if (nurse.description != null && nurse.description!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(nurse.description!, style: const TextStyle(fontSize: 13, color: LafiaColors.body)),
-                ],
-                const SizedBox(height: 4),
-                Text(place, style: const TextStyle(fontSize: 13)),
-                if (nurse.specialties.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                NurseAvatar(name: nurse.name),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final care in nurse.specialties)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: LafiaColors.greyTint, borderRadius: BorderRadius.circular(6)),
-                          child: Text(
-                            care,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: LafiaColors.body),
-                          ),
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          Text(nurse.name, style: Theme.of(context).textTheme.titleMedium),
+                          AvailabilityPill(available: nurse.isAvailable),
+                        ],
+                      ),
+                      if (nurse.title != null && nurse.title!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(nurse.title!, style: const TextStyle(fontSize: 13, color: LafiaColors.body)),
+                      ],
+                      const SizedBox(height: 6),
+                      RatingBadge.from(nurse.rating),
+                      const SizedBox(height: 6),
+                      Text(
+                        [
+                          nurse.place,
+                          if (years != null && years > 0) '$years an${years > 1 ? 's' : ''} d\'expérience',
+                        ].join(' · '),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      if (nurse.services.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final care in nurse.services.take(_visibleServices)) ServiceTag(label: care),
+                            if (hidden > 0) ServiceTag(label: '+$hidden'),
+                          ],
                         ),
+                      ],
+                      const SizedBox(height: 10),
+                      const Row(
+                        children: [
+                          Text(
+                            'Voir la fiche',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: LafiaColors.blueDark),
+                          ),
+                          Icon(Icons.chevron_right_rounded, color: LafiaColors.blueDark),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () => runAsPatient(context, () => showCareRequestSheet(context, nurse), allowNurse: false),
-                  child: const Text('Demander cet infirmier'),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

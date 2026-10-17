@@ -4,20 +4,66 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../api/patient_api.dart';
+import '../format.dart';
 import '../theme.dart';
 
 // Pas de WebSocket pour le MVP : on demande les nouveaux messages à intervalle court.
 const _refreshEvery = Duration(seconds: 3);
 
-const _quickQuestions = ['Quels sont les horaires ?', 'Un médecin est-il disponible ?'];
+const _serviceQuestions = ['Quels sont les horaires ?', 'Un médecin est-il disponible ?'];
 
-/// Maquette M11 : chat de pré-orientation avec l'accueil d'un service.
+/// Discussion par messages (maquette M11) : avec l'accueil d'un service, ou avec un infirmier à domicile.
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, required this.serviceId, required this.serviceName, required this.hospitalName});
+  const ChatScreen._({
+    required this.title,
+    required this.subtitle,
+    required this.open,
+    this.welcome,
+    this.quickQuestions = const [],
+    this.phone,
+  });
 
-  final int serviceId;
-  final String serviceName;
-  final String hospitalName;
+  /// Chat de pré-orientation avec l'accueil d'un service (ouvre la conversation si besoin).
+  factory ChatScreen.service({required int serviceId, required String serviceName, required String hospitalName}) {
+    return ChatScreen._(
+      title: '$serviceName — $hospitalName',
+      subtitle: 'Chat de pré-orientation avec l\'accueil du service',
+      open: (api) async => (await api.openConversation(serviceId)).id,
+      welcome: 'Bonjour, vous êtes en contact avec l\'accueil du service $serviceName ($hospitalName). '
+          'Décrivez brièvement votre besoin : nous vous orientons avant votre déplacement.',
+      quickQuestions: _serviceQuestions,
+    );
+  }
+
+  /// Discussion avec un infirmier à domicile (ouvre la conversation si besoin).
+  factory ChatScreen.nurse({required int nurseId, required String nurseName, String? nurseTitle, String? phone}) {
+    return ChatScreen._(
+      title: nurseName,
+      subtitle: nurseTitle ?? 'Soins à domicile',
+      open: (api) async => (await api.openNurseConversation(nurseId)).id,
+      welcome: 'Décrivez le soin dont vous avez besoin. Votre numéro n\'est pas transmis : '
+          'donnez-le dans la discussion si vous souhaitez être rappelé.',
+      phone: phone,
+    );
+  }
+
+  /// Discussion déjà ouverte, depuis la liste « Messages ».
+  factory ChatScreen.existing({required int conversationId, required String title, required String subtitle, String? phone}) {
+    return ChatScreen._(title: title, subtitle: subtitle, open: (_) async => conversationId, phone: phone);
+  }
+
+  final String title;
+  final String subtitle;
+
+  /// Renvoie l'identifiant de la conversation (en l'ouvrant côté serveur si besoin).
+  final Future<int> Function(PatientApi api) open;
+
+  /// Message d'accueil affiché par l'appli (il n'est pas enregistré sur le serveur).
+  final String? welcome;
+  final List<String> quickQuestions;
+
+  /// Numéro à appeler depuis la discussion, s'il est connu.
+  final String? phone;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -66,8 +112,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _open() async {
     setState(() => _error = null);
     try {
-      final conversation = await _api.openConversation(widget.serviceId);
-      _conversationId = conversation.id;
+      _conversationId = await widget.open(_api);
       await _poll();
       _startPolling();
     } catch (error) {
@@ -163,14 +208,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${widget.serviceName} — ${widget.hospitalName}',
+                    widget.title,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white),
                   ),
-                  const Text(
-                    'Chat de pré-orientation avec l\'accueil du service',
+                  Text(
+                    widget.subtitle,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, color: Color(0xD9FFFFFF)),
+                    style: const TextStyle(fontSize: 12, color: Color(0xD9FFFFFF)),
                   ),
                 ],
               ),
@@ -178,6 +223,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           ],
         ),
         actions: [
+          if (widget.phone != null)
+            IconButton(
+              tooltip: 'Appeler',
+              icon: const Icon(Icons.phone_outlined),
+              onPressed: () => callPhone(widget.phone!),
+            ),
           IconButton(
             tooltip: 'Fermer',
             icon: const Icon(Icons.close_rounded),
@@ -194,6 +245,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             sending: _sending,
             onSend: () => _send(),
             onQuickQuestion: _send,
+            quickQuestions: widget.quickQuestions,
           ),
         ],
       ),
@@ -224,13 +276,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       controller: _scroll,
       padding: const EdgeInsets.all(16),
       children: [
-        // Message d'accueil affiché par l'appli (il n'est pas enregistré sur le serveur).
-        _Bubble(
-          text: 'Bonjour, vous êtes en contact avec l\'accueil du service ${widget.serviceName} '
-              '(${widget.hospitalName}). Décrivez brièvement votre besoin : nous vous orientons '
-              'avant votre déplacement.',
-          isMine: false,
-        ),
+        if (widget.welcome != null) _Bubble(text: widget.welcome!, isMine: false),
         if (_conversationId == null) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
         for (final message in _messages)
           _Bubble(
@@ -301,6 +347,7 @@ class _Composer extends StatelessWidget {
     required this.sending,
     required this.onSend,
     required this.onQuickQuestion,
+    required this.quickQuestions,
   });
 
   final TextEditingController controller;
@@ -308,6 +355,7 @@ class _Composer extends StatelessWidget {
   final bool sending;
   final VoidCallback onSend;
   final ValueChanged<String> onQuickQuestion;
+  final List<String> quickQuestions;
 
   @override
   Widget build(BuildContext context) {
@@ -323,11 +371,11 @@ class _Composer extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SingleChildScrollView(
+              if (quickQuestions.isNotEmpty) SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    for (final question in _quickQuestions)
+                    for (final question in quickQuestions)
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ActionChip(

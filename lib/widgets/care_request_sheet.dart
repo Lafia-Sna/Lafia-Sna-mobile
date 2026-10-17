@@ -140,15 +140,15 @@ class _CareRequestFormState extends State<_CareRequestForm> {
       children: [
         Text('Demander des soins à domicile', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 4),
-        Text('${widget.nurse.name}, ${widget.nurse.city}'),
-        if (widget.nurse.specialties.isNotEmpty) ...[
+        Text('${widget.nurse.name}, ${widget.nurse.place}'),
+        if (widget.nurse.services.isNotEmpty) ...[
           const SizedBox(height: 18),
           const _Label('Quel soin ?'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final care in widget.nurse.specialties)
+              for (final care in widget.nurse.services)
                 ChoiceChip(
                   label: Text(care),
                   selected: _care == care,
@@ -203,7 +203,7 @@ class _CareRequestFormState extends State<_CareRequestForm> {
           errorText: error?.errorFor('address'),
         ),
         LabeledField(
-          label: widget.nurse.specialties.isEmpty ? 'Soin souhaité' : 'Précisions',
+          label: widget.nurse.services.isEmpty ? 'Soin souhaité' : 'Précisions',
           controller: _details,
           icon: Icons.notes_rounded,
           hint: 'Ex. injection quotidienne, ordonnance disponible',

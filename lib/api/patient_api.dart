@@ -2,21 +2,13 @@ import 'package:flutter/widgets.dart';
 
 import 'api_client.dart';
 
+/// Discussion ouverte avec l'accueil d'un service ou avec un infirmier à domicile.
 class Conversation {
-  const Conversation({required this.id, required this.serviceName, required this.hospitalName});
+  const Conversation({required this.id});
 
-  factory Conversation.fromJson(Map<String, dynamic> json) {
-    final service = json['service'] as Map<String, dynamic>;
-    return Conversation(
-      id: json['id'] as int,
-      serviceName: service['name'] as String,
-      hospitalName: service['hospital_name'] as String,
-    );
-  }
+  factory Conversation.fromJson(Map<String, dynamic> json) => Conversation(id: json['id'] as int);
 
   final int id;
-  final String serviceName;
-  final String hospitalName;
 }
 
 class ChatMessage {
@@ -43,13 +35,19 @@ class MessagePage {
   final int otherLastReadId;
 }
 
-/// Conversation dans la liste « Messages ».
+/// Conversation dans la liste « Messages » : avec un service d'hôpital, ou avec un infirmier.
 class ConversationSummary {
   const ConversationSummary({
     required this.id,
     required this.serviceId,
     required this.serviceName,
     required this.hospitalName,
+    required this.nurseId,
+    required this.nurseName,
+    required this.nurseTitle,
+    required this.nursePhone,
+    required this.patientName,
+    required this.patientPhone,
     required this.lastMessage,
     required this.lastMessageIsMine,
     required this.lastMessageAt,
@@ -57,13 +55,21 @@ class ConversationSummary {
   });
 
   factory ConversationSummary.fromJson(Map<String, dynamic> json) {
-    final service = json['service'] as Map<String, dynamic>;
+    final service = json['service'] as Map<String, dynamic>?;
+    final nurse = json['nurse'] as Map<String, dynamic>?;
+    final patient = json['patient'] as Map<String, dynamic>? ?? const {};
     final last = json['last_message'] as Map<String, dynamic>?;
     return ConversationSummary(
       id: json['id'] as int,
-      serviceId: service['id'] as int,
-      serviceName: service['name'] as String,
-      hospitalName: service['hospital_name'] as String,
+      serviceId: service?['id'] as int?,
+      serviceName: service?['name'] as String?,
+      hospitalName: service?['hospital_name'] as String?,
+      nurseId: nurse?['id'] as int?,
+      nurseName: nurse?['name'] as String?,
+      nurseTitle: nurse?['title'] as String?,
+      nursePhone: nurse?['phone'] as String?,
+      patientName: patient['name'] as String? ?? 'Patient',
+      patientPhone: patient['phone'] as String?,
       lastMessage: last?['body'] as String?,
       lastMessageIsMine: last?['is_mine'] == true,
       lastMessageAt: last == null ? null : DateTime.parse(last['created_at'] as String).toLocal(),
@@ -72,13 +78,30 @@ class ConversationSummary {
   }
 
   final int id;
-  final int serviceId;
-  final String serviceName;
-  final String hospitalName;
+
+  /// Renseignés pour une discussion avec un service d'hôpital.
+  final int? serviceId;
+  final String? serviceName;
+  final String? hospitalName;
+
+  /// Renseignés pour une discussion avec un infirmier à domicile.
+  final int? nurseId;
+  final String? nurseName;
+  final String? nurseTitle;
+
+  /// Numéro de l'infirmier, seulement s'il a choisi de l'afficher.
+  final String? nursePhone;
+
+  final String patientName;
+
+  /// Numéro du patient, visible par l'accueil d'un service (jamais par un infirmier).
+  final String? patientPhone;
   final String? lastMessage;
   final bool lastMessageIsMine;
   final DateTime? lastMessageAt;
   final int unreadCount;
+
+  bool get withNurse => nurseId != null;
 }
 
 class Appointment {
@@ -173,70 +196,229 @@ class CareRequest {
   bool get canCancel => status == 'pending' || status == 'accepted';
 }
 
-/// Infirmier·ère à domicile validé·e par l'équipe (annuaire public, sans numéro).
+/// Infirmier·ère à domicile validé·e par l'équipe (annuaire public).
 class Nurse {
   const Nurse({
     required this.id,
     required this.name,
+    required this.title,
     required this.city,
+    required this.neighborhood,
     required this.region,
-    required this.specialties,
+    required this.services,
     required this.description,
+    required this.experienceYears,
+    required this.isAvailable,
+    required this.phone,
+    required this.rating,
   });
 
-  factory Nurse.fromJson(Map<String, dynamic> json) => Nurse(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        city: json['city'] as String? ?? '',
-        region: json['region'] as String?,
-        // Texte libre saisi par l'infirmier : « Pansement, injection, prélèvement ».
-        specialties: ((json['specialties'] as String?) ?? '')
-            .split(RegExp(r'[,;/]'))
-            .map((item) => item.trim())
-            .where((item) => item.isNotEmpty)
-            .toList(),
-        description: json['description'] as String?,
-      );
+  factory Nurse.fromJson(Map<String, dynamic> json) {
+    final services = (json['services'] as List<dynamic>? ?? const []).cast<String>();
+    return Nurse(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      title: json['title'] as String?,
+      city: json['city'] as String? ?? '',
+      neighborhood: json['neighborhood'] as String?,
+      region: json['region'] as String?,
+      // Liste de soins ; à défaut, l'ancien texte libre « Pansement, injection, prélèvement ».
+      services: services.isNotEmpty
+          ? services
+          : ((json['specialties'] as String?) ?? '')
+              .split(RegExp(r'[,;/]'))
+              .map((item) => item.trim())
+              .where((item) => item.isNotEmpty)
+              .toList(),
+      description: json['description'] as String?,
+      experienceYears: json['experience_years'] as int?,
+      isAvailable: json['is_available'] != false,
+      phone: json['phone'] as String?,
+      rating: RatingSummary.fromJson(json),
+    );
+  }
 
   final int id;
   final String name;
+
+  /// Diplôme ou fonction (ex. « Infirmier diplômé d'État »).
+  final String? title;
   final String city;
+  final String? neighborhood;
   final String? region;
-  final List<String> specialties;
+  final List<String> services;
   final String? description;
+  final int? experienceYears;
+
+  /// Indisponible : la fiche reste visible, mais n'accepte pas de nouvelle demande.
+  final bool isAvailable;
+
+  /// Numéro public, seulement si l'infirmier a choisi de l'afficher.
+  final String? phone;
+  final RatingSummary rating;
+
+  /// « Sokodé · Komah »
+  String get place => [city, if (neighborhood != null && neighborhood!.isNotEmpty) neighborhood!].join(' · ');
 }
+
+/// Note moyenne, nombre d'avis et de « J'aime » d'un hôpital ou d'un infirmier.
+class RatingSummary {
+  const RatingSummary({required this.average, required this.reviewsCount, required this.likesCount});
+
+  factory RatingSummary.fromJson(Map<String, dynamic> json) => RatingSummary(
+        average: (json['rating_average'] as num?)?.toDouble(),
+        reviewsCount: json['reviews_count'] as int? ?? 0,
+        likesCount: json['likes_count'] as int? ?? 0,
+      );
+
+  static const empty = RatingSummary(average: null, reviewsCount: 0, likesCount: 0);
+
+  /// `null` : pas encore d'avis.
+  final double? average;
+  final int reviewsCount;
+  final int likesCount;
+}
+
+class Review {
+  const Review({required this.author, required this.rating, required this.comment, required this.updatedAt});
+
+  factory Review.fromJson(Map<String, dynamic> json) => Review(
+        author: json['author'] as String? ?? 'Patient',
+        rating: json['rating'] as int,
+        comment: json['comment'] as String?,
+        updatedAt: DateTime.parse((json['updated_at'] ?? json['created_at']) as String).toLocal(),
+      );
+
+  /// Prénom et initiale (« Aliya A. ») : le nom complet n'est jamais publié.
+  final String author;
+  final int rating;
+  final String? comment;
+  final DateTime updatedAt;
+}
+
+/// Avis d'un hôpital ou d'un infirmier, tels que les voit la personne qui consulte.
+class ReviewsPage {
+  const ReviewsPage({
+    required this.summary,
+    required this.distribution,
+    required this.likedByMe,
+    required this.myRating,
+    required this.myComment,
+    required this.canReview,
+    required this.reviews,
+  });
+
+  factory ReviewsPage.fromJson(Map<String, dynamic> json) {
+    final mine = json['my_review'] as Map<String, dynamic>?;
+    return ReviewsPage(
+      summary: RatingSummary.fromJson(json),
+      distribution: {
+        for (final item in (json['distribution'] as List<dynamic>? ?? const []))
+          (item as Map<String, dynamic>)['rating'] as int: item['count'] as int,
+      },
+      likedByMe: json['liked_by_me'] == true,
+      myRating: mine?['rating'] as int?,
+      myComment: mine?['comment'] as String?,
+      canReview: json['can_review'] == true,
+      reviews: (json['reviews'] as List<dynamic>? ?? const [])
+          .map((item) => Review.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  final RatingSummary summary;
+
+  /// Nombre d'avis par note, de 5 à 1 étoiles.
+  final Map<int, int> distribution;
+  final bool likedByMe;
+  final int? myRating;
+  final String? myComment;
+
+  /// Seuls les comptes patients peuvent donner un avis ou aimer.
+  final bool canReview;
+
+  /// Les 20 avis les plus récents.
+  final List<Review> reviews;
+}
+
+/// Hôpital (`hospitals`) ou infirmier (`nurses`), comme dans les adresses de l'API.
+enum ReviewTarget { hospitals, nurses }
 
 /// Fiche de l'infirmier connecté (espace soignant).
 class MyNurseProfile {
   const MyNurseProfile({
+    required this.title,
     required this.city,
+    required this.neighborhood,
     required this.region,
-    required this.specialties,
+    required this.services,
     required this.description,
+    required this.experienceYears,
     required this.isAvailable,
+    required this.showPhone,
     required this.status,
+    required this.rating,
   });
 
   factory MyNurseProfile.fromJson(Map<String, dynamic> json) => MyNurseProfile(
+        title: json['title'] as String?,
         city: json['city'] as String?,
+        neighborhood: json['neighborhood'] as String?,
         region: json['region'] as String?,
-        specialties: json['specialties'] as String?,
+        services: (json['services'] as List<dynamic>? ?? const []).cast<String>(),
         description: json['description'] as String?,
+        experienceYears: json['experience_years'] as int?,
         isAvailable: json['is_available'] == true,
+        showPhone: json['show_phone'] == true,
         status: json['status'] as String,
+        rating: RatingSummary.fromJson(json),
       );
 
+  final String? title;
   final String? city;
+  final String? neighborhood;
   final String? region;
-  final String? specialties;
+  final List<String> services;
   final String? description;
+  final int? experienceYears;
   final bool isAvailable;
+
+  /// Afficher son numéro sur la fiche publique (non par défaut).
+  final bool showPhone;
 
   /// `pending` | `approved` | `rejected` : validation par l'équipe Lafia Sna.
   final String status;
+  final RatingSummary rating;
 
   /// Ville et région sont obligatoires pour apparaître dans l'annuaire.
   bool get isComplete => (city ?? '').isNotEmpty && (region ?? '').isNotEmpty;
+
+  /// Corps complet de `PUT /nurse/profile` : le serveur attend toute la fiche.
+  Map<String, Object?> toJson() => {
+        'title': title,
+        'city': city,
+        'neighborhood': neighborhood,
+        'region': region,
+        'services': services,
+        'description': description,
+        'experience_years': experienceYears,
+        'is_available': isAvailable,
+        'show_phone': showPhone,
+      };
+
+  MyNurseProfile copyWith({bool? isAvailable}) => MyNurseProfile(
+        title: title,
+        city: city,
+        neighborhood: neighborhood,
+        region: region,
+        services: services,
+        description: description,
+        experienceYears: experienceYears,
+        isAvailable: isAvailable ?? this.isAvailable,
+        showPhone: showPhone,
+        status: status,
+        rating: rating,
+      );
 }
 
 /// Demande de soins reçue par l'infirmier connecté.
@@ -304,6 +486,11 @@ class PatientApi {
     );
   }
 
+  /// Ouvre (ou retrouve) la conversation du patient avec un infirmier.
+  Future<Conversation> openNurseConversation(int nurseId) async {
+    return Conversation.fromJson(await _client.post('/nurses/$nurseId/conversation') as Map<String, dynamic>);
+  }
+
   Future<ChatMessage> sendMessage(int conversationId, String body) async {
     return ChatMessage.fromJson(
       await _client.post('/conversations/$conversationId/messages', {'body': body}) as Map<String, dynamic>,
@@ -329,7 +516,34 @@ class PatientApi {
 
   Future<void> cancelCareRequest(int id) => _client.patch('/care-requests/$id/cancel');
 
-  /// Annuaire public : seuls les infirmiers validés et disponibles y figurent.
+  /// Fiche publique d'un infirmier validé.
+  Future<Nurse> nurse(int id) async {
+    return Nurse.fromJson(await _client.get('/nurses/$id') as Map<String, dynamic>);
+  }
+
+  // --- Avis et « J'aime » (lecture publique, écriture réservée aux patients) ---
+
+  Future<ReviewsPage> reviews(ReviewTarget target, int id) async {
+    return ReviewsPage.fromJson(await _client.get('/${target.name}/$id/reviews') as Map<String, dynamic>);
+  }
+
+  /// Crée ou modifie l'avis de la personne connectée (un seul par cible).
+  Future<ReviewsPage> saveReview(ReviewTarget target, int id, {required int rating, String? comment}) async {
+    final data = await _client.put('/${target.name}/$id/review', {'rating': rating, 'comment': comment});
+    return ReviewsPage.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<ReviewsPage> deleteReview(ReviewTarget target, int id) async {
+    return ReviewsPage.fromJson(await _client.delete('/${target.name}/$id/review') as Map<String, dynamic>);
+  }
+
+  Future<ReviewsPage> setLiked(ReviewTarget target, int id, {required bool liked}) async {
+    final path = '/${target.name}/$id/like';
+    final data = liked ? await _client.post(path) : await _client.delete(path);
+    return ReviewsPage.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Annuaire public des infirmiers validés : disponibles d'abord, puis les mieux notés.
   Future<List<Nurse>> nurses() async {
     final data = await _client.get('/nurses') as List<dynamic>;
     return data.map((item) => Nurse.fromJson(item as Map<String, dynamic>)).toList();
@@ -350,21 +564,9 @@ class PatientApi {
     return MyNurseProfile.fromJson(await _client.get('/nurse/profile') as Map<String, dynamic>);
   }
 
-  Future<MyNurseProfile> updateMyNurseProfile({
-    required String city,
-    required String region,
-    required String? specialties,
-    required String? description,
-    required bool isAvailable,
-  }) async {
-    final data = await _client.put('/nurse/profile', {
-      'city': city,
-      'region': region,
-      'specialties': specialties,
-      'description': description,
-      'is_available': isAvailable,
-    });
-    return MyNurseProfile.fromJson(data as Map<String, dynamic>);
+  /// Enregistre toute la fiche (le serveur attend tous les champs).
+  Future<MyNurseProfile> updateMyNurseProfile(Map<String, Object?> profile) async {
+    return MyNurseProfile.fromJson(await _client.put('/nurse/profile', profile) as Map<String, dynamic>);
   }
 
   Future<List<ReceivedCareRequest>> receivedCareRequests() async {

@@ -33,6 +33,9 @@ class User {
 
   /// Compte créé par l'équipe avec un mot de passe provisoire, à changer avant tout le reste.
   final bool mustChangePassword;
+
+  /// Agent d'hôpital ou équipe Lafia Sna : leur espace de gestion est sur le site web.
+  bool get managesOnWeb => role == 'staff' || role == 'admin';
 }
 
 /// État de la session : jeton gardé dans le stockage chiffré du téléphone.

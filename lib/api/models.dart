@@ -6,10 +6,13 @@ class Hospital {
     required this.city,
     required this.region,
     required this.address,
+    this.emergencyPhone,
     required this.latitude,
     required this.longitude,
     required this.servicesCount,
     required this.openServicesCount,
+    this.ratingAverage,
+    this.reviewsCount = 0,
   });
 
   factory Hospital.fromJson(Map<String, dynamic> json) => Hospital(
@@ -18,10 +21,13 @@ class Hospital {
         city: json['city'] as String,
         region: json['region'] as String,
         address: json['address'] as String?,
+        emergencyPhone: json['emergency_phone'] as String?,
         latitude: (json['latitude'] as num?)?.toDouble(),
         longitude: (json['longitude'] as num?)?.toDouble(),
         servicesCount: json['services_count'] as int? ?? 0,
         openServicesCount: json['open_services_count'] as int? ?? 0,
+        ratingAverage: (json['rating_average'] as num?)?.toDouble(),
+        reviewsCount: json['reviews_count'] as int? ?? 0,
       );
 
   final int id;
@@ -29,10 +35,17 @@ class Hospital {
   final String city;
   final String region;
   final String? address;
+
+  /// Ligne directe des urgences de l'hôpital, si elle est renseignée.
+  final String? emergencyPhone;
   final double? latitude;
   final double? longitude;
   final int servicesCount;
   final int openServicesCount;
+
+  /// Note moyenne des avis des patients (`null` : pas encore d'avis).
+  final double? ratingAverage;
+  final int reviewsCount;
 }
 
 /// Statut d'un service à l'instant présent, calculé par le backend.
@@ -180,6 +193,7 @@ class ServiceDetail {
     required this.status,
     required this.hospitalId,
     required this.hospitalName,
+    this.hospitalEmergencyPhone,
     required this.hours,
     required this.onCallShifts,
     required this.doctors,
@@ -196,6 +210,7 @@ class ServiceDetail {
       status: _status(json),
       hospitalId: hospital['id'] as int,
       hospitalName: hospital['name'] as String,
+      hospitalEmergencyPhone: hospital['emergency_phone'] as String?,
       hours: (json['hours'] as List<dynamic>)
           .map((item) => ServiceHour.fromJson(item as Map<String, dynamic>))
           .toList(),
@@ -216,6 +231,9 @@ class ServiceDetail {
   final ServiceStatus status;
   final int hospitalId;
   final String hospitalName;
+
+  /// Ligne des urgences de l'hôpital du service.
+  final String? hospitalEmergencyPhone;
   final List<ServiceHour> hours;
   final List<OnCallShift> onCallShifts;
   final List<Doctor> doctors;

@@ -60,6 +60,9 @@ cp dart_defines.example.json dart_defines.local.json
 | Un vrai téléphone (même Wi-Fi) | `http://<IP du PC>:8000/api` — l'IP s'obtient avec `hostname -I` |
 | L'API en ligne | `https://<domaine-api>/api` |
 
+`WEB_URL` (facultatif) est l'adresse du site web : l'appli l'ouvre pour les comptes hôpital et l'équipe,
+dont l'espace de gestion est sur le site. Laissez-le vide pour ne pas afficher de lien.
+
 **Chrome et téléphone** : l'adresse de l'appli doit être autorisée par le backend (CORS).
 Dans le `.env` du backend, ajoutez-la à `FRONTEND_URL`, séparée par des virgules :
 

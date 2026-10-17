@@ -8,6 +8,7 @@ import '../format.dart';
 import '../theme.dart';
 import '../widgets/form_fields.dart';
 import '../widgets/states.dart';
+import '../widgets/stars.dart';
 import '../widgets/status_pill.dart';
 
 const _regions = ['Maritime', 'Plateaux', 'Centrale', 'Kara', 'Savanes'];
@@ -50,11 +51,13 @@ class _NurseSpaceState extends State<NurseSpace> {
 
   Future<void> _load() async {
     try {
-      final results = await Future.wait([_api.myNurseProfile(), _api.receivedCareRequests()]);
+      final profile = await _api.myNurseProfile();
+      // Inscription refusée : le serveur ne montre plus les demandes (adresses, numéros des patients).
+      final requests = profile.status == 'rejected' ? const <ReceivedCareRequest>[] : await _api.receivedCareRequests();
       if (!mounted) return;
       setState(() {
-        _profile = results[0] as MyNurseProfile;
-        _requests = results[1] as List<ReceivedCareRequest>;
+        _profile = profile;
+        _requests = requests;
         _error = null;
       });
     } catch (error) {
@@ -76,13 +79,7 @@ class _NurseSpaceState extends State<NurseSpace> {
 
     setState(() => _savingAvailability = true);
     try {
-      final updated = await _api.updateMyNurseProfile(
-        city: profile.city!,
-        region: profile.region!,
-        specialties: profile.specialties,
-        description: profile.description,
-        isAvailable: available,
-      );
+      final updated = await _api.updateMyNurseProfile(profile.copyWith(isAvailable: available).toJson());
       if (mounted) setState(() => _profile = updated);
     } on ApiException catch (error) {
       if (mounted) _showMessage(error.userMessage);
@@ -146,9 +143,16 @@ class _NurseSpaceState extends State<NurseSpace> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        profile.isComplete ? '${profile.city}, région ${profile.region}' : 'Fiche à compléter',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile.isComplete ? '${profile.city}, région ${profile.region}' : 'Fiche à compléter',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          RatingBadge.from(profile.rating),
+                        ],
                       ),
                     ),
                     TextButton.icon(
@@ -220,7 +224,8 @@ class _ValidationBanner extends StatelessWidget {
       ),
       child: Text(
         rejected
-            ? 'Votre fiche n\'a pas été validée par l\'équipe Lafia Sna. Contactez-la pour en savoir plus.'
+            ? 'Votre inscription n\'a pas été validée par l\'équipe Lafia Sna : les demandes des patients ne vous '
+                'sont pas accessibles. Contactez l\'équipe pour en savoir plus.'
             : 'Votre fiche attend la validation de l\'équipe Lafia Sna. Vous apparaîtrez dans l\'annuaire ensuite.',
         style: TextStyle(
           fontSize: 13,
@@ -318,7 +323,26 @@ class _RequestCard extends StatelessWidget {
   }
 }
 
-/// Ma fiche : ville, région, soins proposés et présentation, visibles dans l'annuaire.
+/// Soins proposés en un geste : même liste que le site web (lib/careServices.ts).
+const _careServices = [
+  'Pansements et soins de plaies',
+  'Injections',
+  'Perfusions',
+  'Prise de tension',
+  'Suivi du diabète',
+  'Prélèvements à domicile',
+  'Soins post-opératoires',
+  'Soins mère et nouveau-né',
+  'Soins aux personnes âgées',
+  'Toilette et soins d’hygiène',
+  'Soins palliatifs',
+  'Retrait de points de suture',
+];
+
+/// Doit rester égal à NurseProfile::MAX_SERVICES côté serveur.
+const _maxServices = 12;
+
+/// Ma fiche : ce que les patients voient dans l'annuaire.
 class _ProfileForm extends StatefulWidget {
   const _ProfileForm({required this.api, required this.profile});
 
@@ -330,19 +354,44 @@ class _ProfileForm extends StatefulWidget {
 }
 
 class _ProfileFormState extends State<_ProfileForm> {
+  late final _title = TextEditingController(text: widget.profile.title);
   late final _city = TextEditingController(text: widget.profile.city);
-  late final _specialties = TextEditingController(text: widget.profile.specialties);
+  late final _neighborhood = TextEditingController(text: widget.profile.neighborhood);
+  late final _experience = TextEditingController(text: widget.profile.experienceYears?.toString());
   late final _description = TextEditingController(text: widget.profile.description);
+  final _otherService = TextEditingController();
   late String? _region = _regions.contains(widget.profile.region) ? widget.profile.region : null;
+  late final List<String> _services = [...widget.profile.services];
+  late bool _showPhone = widget.profile.showPhone;
   bool _busy = false;
   ApiException? _error;
 
   @override
   void dispose() {
-    _city.dispose();
-    _specialties.dispose();
-    _description.dispose();
+    for (final controller in [_title, _city, _neighborhood, _experience, _description, _otherService]) {
+      controller.dispose();
+    }
     super.dispose();
+  }
+
+  void _toggleService(String service) {
+    setState(() {
+      if (_services.contains(service)) {
+        _services.remove(service);
+      } else if (_services.length < _maxServices) {
+        _services.add(service);
+      }
+    });
+  }
+
+  void _addOtherService() {
+    final service = _otherService.text.trim();
+    final exists = _services.any((s) => s.toLowerCase() == service.toLowerCase());
+    if (service.length < 2 || exists || _services.length >= _maxServices) return;
+    setState(() {
+      _services.add(service);
+      _otherService.clear();
+    });
   }
 
   Future<void> _submit() async {
@@ -354,13 +403,17 @@ class _ProfileFormState extends State<_ProfileForm> {
         controller.text.trim().isEmpty ? null : controller.text.trim();
 
     try {
-      final updated = await widget.api.updateMyNurseProfile(
-        city: _city.text.trim(),
-        region: _region ?? '',
-        specialties: orNull(_specialties),
-        description: orNull(_description),
-        isAvailable: widget.profile.isAvailable,
-      );
+      final updated = await widget.api.updateMyNurseProfile({
+        'title': orNull(_title),
+        'city': _city.text.trim(),
+        'neighborhood': orNull(_neighborhood),
+        'region': _region ?? '',
+        'services': _services,
+        'description': orNull(_description),
+        'experience_years': int.tryParse(_experience.text.trim()),
+        'is_available': widget.profile.isAvailable,
+        'show_phone': _showPhone,
+      });
       if (mounted) Navigator.of(context).pop(updated);
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error);
@@ -373,6 +426,12 @@ class _ProfileFormState extends State<_ProfileForm> {
   Widget build(BuildContext context) {
     final error = _error;
     final general = error != null && error.fieldErrors.isEmpty ? error.userMessage : null;
+    // Soins ajoutés à la main, absents de la liste proposée.
+    final custom = _services.where((s) => !_careServices.contains(s)).toList();
+    final servicesError = error?.fieldErrors.entries
+        .where((entry) => entry.key.startsWith('services'))
+        .map((entry) => entry.value.first)
+        .firstOrNull;
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -388,12 +447,28 @@ class _ProfileFormState extends State<_ProfileForm> {
               const Text('Ces informations sont visibles des patients dans l\'annuaire.'),
               const SizedBox(height: 18),
               LabeledField(
+                label: 'Diplôme ou fonction (facultatif)',
+                controller: _title,
+                icon: Icons.badge_outlined,
+                hint: 'Ex. Infirmier diplômé d\'État',
+                maxLength: 100,
+                errorText: error?.errorFor('title'),
+              ),
+              LabeledField(
                 label: 'Ville',
                 controller: _city,
                 icon: Icons.location_city_outlined,
                 hint: 'Ex. Sokodé',
                 maxLength: 100,
                 errorText: error?.errorFor('city'),
+              ),
+              LabeledField(
+                label: 'Quartier (facultatif)',
+                controller: _neighborhood,
+                icon: Icons.place_outlined,
+                hint: 'Ex. Komah',
+                maxLength: 100,
+                errorText: error?.errorFor('neighborhood'),
               ),
               const Text('Région', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LafiaColors.ink)),
               const SizedBox(height: 8),
@@ -404,23 +479,80 @@ class _ProfileFormState extends State<_ProfileForm> {
                 items: [for (final region in _regions) DropdownMenuItem(value: region, child: Text(region))],
                 onChanged: (value) => setState(() => _region = value),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
+              Text(
+                'Soins proposés (${_services.length}/$_maxServices)',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LafiaColors.ink),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final service in [..._careServices, ...custom])
+                    FilterChip(
+                      label: Text(service),
+                      selected: _services.contains(service),
+                      onSelected: (_) => _toggleService(service),
+                      selectedColor: LafiaColors.greenTint,
+                      checkmarkColor: LafiaColors.greenInk,
+                      side: BorderSide(
+                        color: _services.contains(service) ? LafiaColors.greenTintBorder : LafiaColors.border,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _otherService,
+                      maxLength: 60,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _addOtherService(),
+                      decoration: const InputDecoration(counterText: '', hintText: 'Autre soin'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(onPressed: _addOtherService, child: const Text('Ajouter')),
+                ],
+              ),
+              if (servicesError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(servicesError, style: const TextStyle(color: Color(0xFFB91C1C))),
+                ),
+              const SizedBox(height: 18),
               LabeledField(
-                label: 'Soins proposés (facultatif)',
-                controller: _specialties,
-                icon: Icons.medical_services_outlined,
-                hint: 'Pansements, injections, prélèvements',
-                errorText: error?.errorFor('specialties'),
+                label: 'Années d\'expérience (facultatif)',
+                controller: _experience,
+                icon: Icons.work_outline_rounded,
+                hint: 'Ex. 8',
+                keyboardType: TextInputType.number,
+                maxLength: 2,
+                errorText: error?.errorFor('experience_years'),
               ),
               LabeledField(
                 label: 'Présentation (facultative)',
                 controller: _description,
                 icon: Icons.notes_rounded,
-                hint: 'Ex. Infirmier diplômé d\'État, 8 ans d\'expérience',
+                hint: 'Votre parcours, vos horaires…',
                 maxLength: 500,
                 textInputAction: TextInputAction.done,
                 errorText: error?.errorFor('description'),
               ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _showPhone,
+                onChanged: (value) => setState(() => _showPhone = value),
+                title: const Text(
+                  'Afficher mon numéro sur ma fiche',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: LafiaColors.ink),
+                ),
+                subtitle: const Text('Sinon, il n\'est communiqué qu\'après une demande acceptée.'),
+              ),
+              const SizedBox(height: 8),
               if (general != null) FormErrorBanner(message: general),
               SubmitButton(label: 'Enregistrer', busy: _busy, onPressed: _submit),
               const SizedBox(height: 8),

@@ -5,6 +5,7 @@ import '../screens/messages_screen.dart';
 import '../screens/my_requests_screen.dart';
 import '../screens/privacy_screen.dart';
 import '../theme.dart';
+import '../widgets/web_space_notice.dart';
 import 'auth_controller.dart';
 import 'login_screen.dart';
 
@@ -62,6 +63,10 @@ class AccountButton extends StatelessWidget {
               if (user.phone != null) ...[
                 const SizedBox(height: 4),
                 Text(formatPhone(user.phone!)),
+              ],
+              if (user.managesOnWeb) ...[
+                const SizedBox(height: 14),
+                WebSpaceNotice(role: user.role),
               ],
               const SizedBox(height: 16),
               ListTile(
