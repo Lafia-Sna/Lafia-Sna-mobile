@@ -429,14 +429,24 @@ class _HospitalCard extends StatelessWidget {
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: LafiaColors.ink),
                             ),
                           ),
-                          if (distance != null) ...[
-                            const SizedBox(width: 8),
-                            Pill(label: formatDistance(distance!), icon: Icons.place_outlined),
-                          ],
+                          const SizedBox(width: 8),
+                          // Comme dans la maquette : le lieu, à droite.
+                          Pill(
+                            label: distance != null ? formatDistance(distance!) : hospital.city,
+                            icon: Icons.place_outlined,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text('${hospital.city}, région ${hospital.region}', style: const TextStyle(fontSize: 13)),
+                      // La ville est déjà dans l'étiquette de droite quand aucune position n'est choisie.
+                      Text(
+                        [
+                          if (hospital.address != null && hospital.address!.isNotEmpty) hospital.address!,
+                          if (distance != null) hospital.city,
+                          'région ${hospital.region}',
+                        ].join(', '),
+                        style: const TextStyle(fontSize: 13),
+                      ),
                       if (hospital.reviewsCount > 0) ...[
                         const SizedBox(height: 4),
                         RatingBadge(average: hospital.ratingAverage, count: hospital.reviewsCount),

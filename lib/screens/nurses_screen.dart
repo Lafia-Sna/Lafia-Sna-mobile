@@ -168,7 +168,7 @@ class _NurseCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                NurseAvatar(name: nurse.name),
+                NurseAvatar(name: nurse.name, photoUrl: nurse.photoUrl),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lafia_sna/api/models.dart';
 import 'package:lafia_sna/api/patient_api.dart';
 
 void main() {
@@ -59,5 +60,27 @@ void main() {
     expect(page.distribution[5], 1);
     expect(page.myRating, 5);
     expect(page.reviews.single.author, 'Aliya A.');
+  });
+
+  test('la photo de l\'infirmier et la présentation de l\'hôpital sont lues', () {
+    final nurse = Nurse.fromJson({
+      'id': 1,
+      'name': 'Fatou Alassani',
+      'city': 'Sokodé',
+      'services': ['Injections'],
+      'is_available': true,
+      'photo_url': 'https://api.lafiasna.com/storage/profils/fatou.jpg',
+    });
+    expect(nurse.photoUrl, endsWith('fatou.jpg'));
+
+    final detail = HospitalDetail.fromJson({
+      'id': 1,
+      'name': 'CHR Sokodé',
+      'city': 'Sokodé',
+      'region': 'Centrale',
+      'description': 'Urgences 24h/24 et maternité.',
+      'services': [],
+    });
+    expect(detail.description, 'Urgences 24h/24 et maternité.');
   });
 }

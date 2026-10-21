@@ -111,7 +111,7 @@ class _Header extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          NurseAvatar(name: nurse.name, radius: 32),
+          NurseAvatar(name: nurse.name, photoUrl: nurse.photoUrl, radius: 32),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -316,20 +316,39 @@ class _Fact extends StatelessWidget {
 }
 
 /// Pastille verte avec les initiales de l'infirmier.
+/// Photo de l'infirmier dans un cercle ; ses initiales si la photo manque ou ne charge pas.
 class NurseAvatar extends StatelessWidget {
-  const NurseAvatar({super.key, required this.name, this.radius = 24});
+  const NurseAvatar({super.key, required this.name, this.photoUrl, this.radius = 24});
 
   final String name;
+  final String? photoUrl;
   final double radius;
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
+    final fallback = CircleAvatar(
       radius: radius,
       backgroundColor: const Color(0xFFD8F7E4),
       child: Text(
         initials(name).isEmpty ? '?' : initials(name),
         style: TextStyle(fontSize: radius * 0.7, fontWeight: FontWeight.w700, color: LafiaColors.greenInk),
+      ),
+    );
+    final url = photoUrl;
+    if (url == null || url.isEmpty) return fallback;
+
+    // Image décodée à la taille du cercle : peu de mémoire et de données en connexion faible.
+    final pixels = (radius * 2 * MediaQuery.devicePixelRatioOf(context)).ceil();
+    return ClipOval(
+      child: Image.network(
+        url,
+        width: radius * 2,
+        height: radius * 2,
+        fit: BoxFit.cover,
+        cacheWidth: pixels,
+        semanticLabel: 'Photo de $name',
+        errorBuilder: (_, __, ___) => fallback,
+        loadingBuilder: (_, child, progress) => progress == null ? child : fallback,
       ),
     );
   }
