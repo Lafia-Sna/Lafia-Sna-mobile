@@ -84,6 +84,10 @@ class _NurseDetailScreenState extends State<NurseDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
                     _Header(nurse: nurse),
+                    if (nurse.description != null && nurse.description!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      _Presentation(text: nurse.description!.trim()),
+                    ],
                     const SizedBox(height: 14),
                     _Contact(nurse: nurse),
                     const SizedBox(height: 14),
@@ -105,31 +109,48 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Photo bien visible : on voit d'abord la personne, puis sa présentation, puis ses services.
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: cardDecoration(),
+      child: Column(
+        children: [
+          NurseAvatar(name: nurse.name, photoUrl: nurse.photoUrl, radius: 56),
+          const SizedBox(height: 12),
+          Text(nurse.name, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
+          if (nurse.title != null && nurse.title!.isNotEmpty)
+            Text(nurse.title!, textAlign: TextAlign.center, style: const TextStyle(color: LafiaColors.body)),
+          const SizedBox(height: 10),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [AvailabilityPill(available: nurse.isAvailable), RatingBadge.from(nurse.rating)],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Présentation rédigée par l'infirmier, juste sous sa photo.
+class _Presentation extends StatelessWidget {
+  const _Presentation({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: cardDecoration(),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          NurseAvatar(name: nurse.name, photoUrl: nurse.photoUrl, radius: 32),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(nurse.name, style: Theme.of(context).textTheme.headlineSmall),
-                if (nurse.title != null && nurse.title!.isNotEmpty)
-                  Text(nurse.title!, style: const TextStyle(color: LafiaColors.body)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [AvailabilityPill(available: nurse.isAvailable), RatingBadge.from(nurse.rating)],
-                ),
-              ],
-            ),
-          ),
+          Text('Présentation', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(text, style: const TextStyle(fontSize: 14, height: 1.45, color: LafiaColors.body)),
         ],
       ),
     );
@@ -249,12 +270,6 @@ class _Details extends StatelessWidget {
             value: years != null && years > 0 ? '$years an${years > 1 ? 's' : ''}' : 'Non renseignée',
           ),
           const _Fact(icon: Icons.verified_outlined, label: 'Vérification', value: 'Validé par Lafia Sna'),
-          if (nurse.description != null && nurse.description!.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('Présentation', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(nurse.description!, style: const TextStyle(fontSize: 14, color: LafiaColors.body)),
-          ],
           const SizedBox(height: 14),
           Text('Soins proposés', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
