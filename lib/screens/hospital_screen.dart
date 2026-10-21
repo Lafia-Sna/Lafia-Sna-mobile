@@ -116,6 +116,25 @@ class _Content extends StatelessWidget {
           const SizedBox(height: 12),
           EmergencyCallCard(phone: detail.hospital.emergencyPhone, hospitalName: detail.hospital.name),
         ],
+        // Présentation « À propos » rédigée par l'hôpital, si elle existe.
+        if (detail.description != null && detail.description!.trim().isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: cardDecoration(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('À propos', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 6),
+                Text(
+                  detail.description!.trim(),
+                  style: const TextStyle(fontSize: 14, height: 1.45, color: LafiaColors.body),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         Text('Services', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 10),

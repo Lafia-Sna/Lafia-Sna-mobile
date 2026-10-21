@@ -91,11 +91,12 @@ class ServiceSummary {
 }
 
 class HospitalDetail {
-  const HospitalDetail({required this.hospital, required this.phone, required this.services});
+  const HospitalDetail({required this.hospital, required this.phone, this.description, required this.services});
 
   factory HospitalDetail.fromJson(Map<String, dynamic> json) => HospitalDetail(
         hospital: Hospital.fromJson(json),
         phone: json['phone'] as String?,
+        description: json['description'] as String?,
         services: (json['services'] as List<dynamic>)
             .map((item) => ServiceSummary.fromJson(item as Map<String, dynamic>))
             .toList(),
@@ -103,6 +104,9 @@ class HospitalDetail {
 
   final Hospital hospital;
   final String? phone;
+
+  /// Présentation « À propos » rédigée par l'hôpital.
+  final String? description;
   final List<ServiceSummary> services;
 }
 

@@ -210,6 +210,7 @@ class Nurse {
     required this.experienceYears,
     required this.isAvailable,
     required this.phone,
+    this.photoUrl,
     required this.rating,
   });
 
@@ -234,6 +235,7 @@ class Nurse {
       experienceYears: json['experience_years'] as int?,
       isAvailable: json['is_available'] != false,
       phone: json['phone'] as String?,
+      photoUrl: json['photo_url'] as String?,
       rating: RatingSummary.fromJson(json),
     );
   }
@@ -255,6 +257,9 @@ class Nurse {
 
   /// Numéro public, seulement si l'infirmier a choisi de l'afficher.
   final String? phone;
+
+  /// Photo envoyée à l'inscription, visible une fois l'infirmier validé.
+  final String? photoUrl;
   final RatingSummary rating;
 
   /// « Sokodé · Komah »
