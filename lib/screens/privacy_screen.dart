@@ -5,8 +5,8 @@ import '../format.dart';
 import '../theme.dart';
 
 // Mêmes coordonnées que le pied de page du site web.
-const _contactEmail = 'contact@lafiasna.tg';
-const _contactPhone = '+22896111079';
+const _contactEmail = 'lafiasnastartup@gmail.com';
+const _contactPhone = '+22893341690';
 
 /// Politique de confidentialité, rédigée d'après ce que l'appli et l'API font réellement.
 /// BROUILLON : à faire relire par l'équipe (et idéalement un juriste) avant la publication.
