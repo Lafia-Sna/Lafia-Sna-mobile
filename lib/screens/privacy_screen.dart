@@ -5,8 +5,8 @@ import '../format.dart';
 import '../theme.dart';
 
 // Mêmes coordonnées que le pied de page du site web.
-const _contactEmail = 'contact@lafiasna.tg';
-const _contactPhone = '+22896111079';
+const _contactEmail = 'lafiasnastartup@gmail.com';
+const _contactPhone = '+22893341690';
 
 /// Politique de confidentialité, rédigée d'après ce que l'appli et l'API font réellement.
 /// BROUILLON : à faire relire par l'équipe (et idéalement un juriste) avant la publication.
@@ -91,8 +91,8 @@ class PrivacyScreen extends StatelessWidget {
               title: 'Vos droits',
               paragraphs: [
                 'Vous pouvez modifier votre nom, votre numéro et votre e-mail depuis votre compte sur le site web. '
-                    'Vous pouvez demander à consulter vos données ou à supprimer votre compte en écrivant à '
-                    'l\'équipe : nous supprimons alors votre compte et les informations qui y sont liées.',
+                    'Vous pouvez supprimer votre compte à tout moment depuis « Mon compte » : votre compte et les '
+                    'informations qui y sont liées sont alors effacés. Pour obtenir une copie de vos données, écrivez à l\'équipe.',
               ],
             ),
             const SizedBox(height: 4),
