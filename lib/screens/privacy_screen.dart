@@ -91,8 +91,8 @@ class PrivacyScreen extends StatelessWidget {
               title: 'Vos droits',
               paragraphs: [
                 'Vous pouvez modifier votre nom, votre numéro et votre e-mail depuis votre compte sur le site web. '
-                    'Vous pouvez demander à consulter vos données ou à supprimer votre compte en écrivant à '
-                    'l\'équipe : nous supprimons alors votre compte et les informations qui y sont liées.',
+                    'Vous pouvez supprimer votre compte à tout moment depuis « Mon compte » : votre compte et les '
+                    'informations qui y sont liées sont alors effacés. Pour obtenir une copie de vos données, écrivez à l\'équipe.',
               ],
             ),
             const SizedBox(height: 4),

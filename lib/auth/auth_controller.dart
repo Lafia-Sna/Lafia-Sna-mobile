@@ -139,6 +139,12 @@ class AuthController extends ChangeNotifier {
     await _clear();
   }
 
+  /// Suppression définitive du compte, confirmée par le mot de passe ; l'appareil est ensuite déconnecté.
+  Future<void> deleteAccount(String password) async {
+    await _api.delete('/me', {'password': password});
+    await _clear();
+  }
+
   Future<void> _openSession(String path, Map<String, Object?> body) async {
     final data = await _api.post(path, body) as Map<String, dynamic>;
     final token = data['token'] as String;
