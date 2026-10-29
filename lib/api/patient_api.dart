@@ -16,7 +16,7 @@ class ChatMessage {
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
         id: json['id'] as int,
-        body: json['body'] as String,
+        body: _bodyWithAttachment(json['body'] as String?, json['attachment']),
         isMine: json['is_mine'] == true,
         createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       );
@@ -25,6 +25,13 @@ class ChatMessage {
   final String body;
   final bool isMine;
   final DateTime createdAt;
+
+  /// L'appli n'affiche pas encore les images et PDF joints : elle les annonce, à ouvrir sur le site.
+  static String _bodyWithAttachment(String? body, Object? attachment) {
+    if (attachment is! Map<String, dynamic>) return body ?? '';
+    final notice = '📎 ${attachment['name']} (à ouvrir sur lafiasna.com)';
+    return body == null || body.isEmpty ? notice : '$body\n$notice';
+  }
 }
 
 /// Nouveaux messages et dernier message lu par l'autre personne (pour la mention « Vu »).
